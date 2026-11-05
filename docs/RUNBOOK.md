@@ -160,9 +160,13 @@ systemctl list-timers ueex-backup.timer               # наступний за�
 
 ## 10. Після відновлення
 
-- [ ] Повідомити користувачам **нову адресу** (або перенаправити DNS-запис на `<NEW_IP>`
-      і після цього: `sed -i 's/^SERVER_NAME=.*/SERVER_NAME=<DNS>/' .env && ./scripts/gen-cert.sh --force && docker compose up -d nginx grafana`).
-- [ ] Оновити `SERVER_NAME` у записі `.env` у менеджері паролів.
+- [ ] Спрямувати користувачів на новий сервер:
+      - **сервіс доступний за IP** — повідомити користувачам нову адресу `https://<NEW_IP>/`;
+      - **сервіс доступний за доменом** — змінити A-запис домену на `<NEW_IP>`, потім на сервері
+        вписати домен у `.env` і перевипустити сертифікат під нього:
+        `sed -i 's/^SERVER_NAME=.*/SERVER_NAME=<DOMAIN>/' .env && ./scripts/gen-cert.sh --force && docker compose up -d nginx grafana`
+- [ ] Оновити запис «UEEX stack .env» у менеджері паролів: на кроці 5 `SERVER_NAME` змінено лише
+      у файлі на сервері, а копія в менеджері паролів досі містить стару адресу.
 - [ ] Видалити старий сервер у панелі провайдера (**Destroy**), якщо він не повернеться —
       він продовжує тарифікуватися навіть вимкненим.
 - [ ] Записати інцидент: час виявлення, причина, час відновлення, втрачені дані (різниця між
@@ -180,6 +184,6 @@ systemctl list-timers ueex-backup.timer               # наступний за�
 | `app` не стає healthy після restore | `docker compose logs --tail 100 app`; найчастіше `APP_TAG` старіший за версію бекапу (крок 7) |
 | `app` unhealthy, у логах помилки підключення до БД | `docker compose ps db`, `docker compose logs db`; пароль у `.env` має збігатися з тим, з яким створено volume. На новому хості volume новий — збіг гарантовано |
 | Браузер: `ERR_CONNECTION_REFUSED` | `ufw status` (80/443), `docker compose ps nginx`, `docker compose logs nginx` |
-| Grafana 502 | `docker compose ps grafana`; Grafana стартує ~30 с після інших сервісів |
+| Grafana 502 | `docker compose ps grafana`; Grafana стартує приблизно на 30 секунд пізніше за інші сервіси — зачекайте і оновіть сторінку |
 | Немає алертів у Telegram | `TELEGRAM_*` у `.env` → `./scripts/render-config.sh && docker compose restart alertmanager`; бот має бути доданий у чат, `chat_id` групи — відʼємне число |
 | Мало памʼяті / OOM | `free -h`, `docker stats --no-stream`; переконайтесь, що swap увімкнено (крок 4) |

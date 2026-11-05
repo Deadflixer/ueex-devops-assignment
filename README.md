@@ -63,7 +63,8 @@ flowchart LR
 | node-exporter | `prom/node-exporter:v1.12.1` | внутрішній |
 | postgres-exporter | `quay.io/prometheuscommunity/postgres-exporter:v0.20.1` | внутрішній |
 
-Усі версії зафіксовані — жодного `:latest`. Публічно відкриті лише 80/443 (+22 для SSH).
+Усі версії зафіксовані — жодного `:latest`. На тестовому стенді публічно відкриті 80/443 (+22 для SSH);
+як периметр виглядав би в продакшені — див. [Безпека](#безпека).
 
 ## Відповідність вимогам
 
@@ -131,18 +132,35 @@ cp .env.example .env && nano .env          # або .env з менеджера �
 - **Автозапуск подвійний**: `restart: unless-stopped` піднімає контейнери разом з Docker,
   а `ueex-stack.service` гарантує `docker compose up -d` навіть після ручного `compose down`.
 
-## Безпека (що зроблено / що свідомо спрощено)
+## Безпека
+
+### Що зроблено на стенді
 
 - Публічно відкриті лише 22/80/443 (UFW + публікація портів у compose лише для nginx).
-- Секрети лише в `.env` (права 600) і на хості; у Git — шаблон. Пароль БД/Grafana генерується `openssl rand`.
-- БД у `internal`-мережі без доступу в інтернет; Prometheus/Alertmanager — лише `127.0.0.1`.
+- Секрети лише в `.env` (права 600) і на хості; у Git — шаблон. Паролі БД/Grafana генеруються `openssl rand`.
+- БД у `internal`-мережі без доступу в інтернет; Prometheus/Alertmanager слухають лише `127.0.0.1`.
 - `/healthcheck.php` через nginx доступний лише з внутрішніх мереж.
-- Спрощено для тестового стенду: вхід на сервер під `root`; у продакшені — окремий користувач
-  з sudo, `PasswordAuthentication no`, `PermitRootLogin prohibit-password`, fail2ban.
+- Свідомо спрощено для тестового стенду: SSH-вхід під `root` з інтернету, сервіс напряму на IP.
+
+### Як був би побудований периметр у продакшені
+
+- **SSH — лише за ключем і лише з VPN.** Окремий користувач з sudo, `PasswordAuthentication no`,
+  `PermitRootLogin no`; порт 22 відкритий тільки для підмережі VPN (WireGuard / корпоративний VPN),
+  з інтернету недоступний. Додатково fail2ban.
+- **80/443 — лише через Cloudflare proxy.** DNS-запис у режимі proxied; на хості вхідні 80/443
+  дозволені тільки з IP-діапазонів Cloudflare (`https://www.cloudflare.com/ips-v4`, `/ips-v6`).
+  Список оновлюється скриптом за systemd-таймером. Пряме звернення на IP сервера в обхід
+  Cloudflare неможливе — сервіс отримує WAF, захист від DDoS і rate limiting.
+  Важливо: Docker публікує порти в обхід UFW, тому whitelist задається в ланцюжку iptables
+  `DOCKER-USER`, а не правилами UFW.
+- **TLS — сертифікати Cloudflare.** Користувач бачить edge-сертифікат Cloudflare; між Cloudflare
+  і nginx — Cloudflare Origin CA сертифікат, режим SSL «Full (strict)». Let's Encrypt не потрібен.
+- Альтернатива без жодного відкритого вхідного порту — Cloudflare Tunnel (`cloudflared`):
+  сервер сам встановлює вихідне зʼєднання до Cloudflare.
 
 ## Що б додав у продакшені
 
-- Сертифікат від Let's Encrypt (потрібне DNS-імʼя) замість self-signed.
+- Периметр вище: SSH за ключем через VPN, 80/443 лише з Cloudflare, сертифікати Cloudflare.
 - Образи з власного registry з підписом/скануванням (Trivy), автоматизований деплой з CI.
 - Бекап через WAL-архівацію (pgBackRest/WAL-G) для PITR і RPO у хвилини замість доби.
 - Шифрування бекапів перед відправкою (age/gpg) і регулярне автоматичне тестове відновлення.
