@@ -74,3 +74,11 @@ rclone_r2() {
 }
 
 require_root() { [[ $EUID -eq 0 ]] || die "Запустіть від root (sudo)"; }
+
+# Підтвердження деструктивної дії: приймає y/yes (без урахування регістру та пробілів)
+confirm() {
+  local ans
+  read -r -p "$1 [y/N] " ans
+  ans=$(tr -d '[:space:]' <<<"$ans" | tr '[:upper:]' '[:lower:]')
+  [[ "$ans" == "y" || "$ans" == "yes" ]]
+}
