@@ -50,6 +50,10 @@ server {
     proxy_set_header X-Real-IP         $remote_addr;
     proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    # websocket (Grafana live). Задано тут, а не в location: якщо location має хоч одну
+    # власну proxy_set_header, заголовки рівня server у ньому НЕ успадковуються.
+    proxy_set_header Upgrade           $http_upgrade;
+    proxy_set_header Connection        $connection_upgrade;
 
     # Healthcheck застосунку — лише з внутрішніх мереж (для моніторингу)
     location = /healthcheck.php {
@@ -61,6 +65,12 @@ server {
         access_log off;
         set $upstream_app http://app:80;
         proxy_pass $upstream_app;
+    }
+
+    # Grafana (serve_from_sub_path=true, тому URI передається як є)
+    location /grafana/ {
+        set $upstream_grafana http://grafana:3000;
+        proxy_pass $upstream_grafana;
     }
 
     location / {
