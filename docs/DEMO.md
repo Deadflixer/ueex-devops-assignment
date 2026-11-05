@@ -127,5 +127,5 @@ cat .deploy/history.log
 
 - Уся конфігурація — у цьому репозиторії; секрети — лише в `.env` (у `.gitignore`), шаблон — `.env.example`.
 - CI (`.github/workflows/validate.yml`): shellcheck, `docker compose config`, `promtool` + юніт-тести алертів.
-- Runbook: [docs/RUNBOOK.md](RUNBOOK.md). Перевіряється «навчанням»: окремий чистий VPS
-  піднімається строго за інструкцією з відновленням даних з R2, після чого VPS видаляється.
+- Runbook: [docs/RUNBOOK.md](RUNBOOK.md). Перевірено навчанням 2026-11-05: окремий чистий
+  VPS піднято строго за інструкцією з відновленням даних з R2 за ~12 хв (журнал — у кінці RUNBOOK).
