@@ -1,0 +1,64 @@
+# Юніт-тести правил алертів:  promtool test rules monitoring/prometheus/tests/alerts_test.yml
+rule_files:
+  - ../rules/alerts.yml
+
+evaluation_interval: 15s
+
+tests:
+  # Застосунок лежить 3 хв -> ApplicationDown спрацьовує лише після for: 1m
+  - interval: 15s
+    input_series:
+      - series: 'probe_success{job="blackbox-app",probe="via-nginx",instance="https://nginx/healthcheck.php"}'
+        values: '1x3 0x12'
+    alert_rule_test:
+      - eval_time: 1m15s
+        alertname: ApplicationDown
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: ApplicationDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: blackbox-app
+              probe: via-nginx
+              instance: https://nginx/healthcheck.php
+            exp_annotations:
+              summary: "Kanboard недоступний (via-nginx)"
+              description: "Перевірка https://nginx/healthcheck.php не проходить понад 1 хв."
+
+  # БД недоступна -> PostgresDown
+  - interval: 15s
+    input_series:
+      - series: 'pg_up{job="postgres",instance="postgres-exporter:9187"}'
+        values: '1 0x10'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: PostgresDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: postgres
+              instance: postgres-exporter:9187
+            exp_annotations:
+              summary: "PostgreSQL недоступний"
+              description: "postgres-exporter не може підключитися до БД понад 1 хв."
+
+  # Останній успішний бекап «у момент 0» -> через 26 год + 10 хв спрацьовує BackupTooOld
+  - interval: 5m
+    input_series:
+      - series: 'ueex_backup_last_success_timestamp_seconds{job="node",instance="node-exporter:9100"}'
+        values: '0x400'
+    alert_rule_test:
+      - eval_time: 20h
+        alertname: BackupTooOld
+        exp_alerts: []
+      - eval_time: 27h
+        alertname: BackupTooOld
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: node
+              instance: node-exporter:9100
+            exp_annotations:
+              summary: "Немає успішного бекапу БД понад 26 год"
+              description: "Перевірте: systemctl status ueex-backup.service; journalctl -u ueex-backup.service"

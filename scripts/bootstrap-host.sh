@@ -11,6 +11,7 @@ SCRIPT_NAME=bootstrap
 source "$(dirname "$0")/lib.sh"
 require_root
 
+# shellcheck source=/dev/null
 . /etc/os-release
 [[ "$ID" == "debian" ]] || die "Очікується Debian, знайдено: $ID"
 log "Debian ${VERSION_ID} (${VERSION_CODENAME})"
