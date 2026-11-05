@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily UEEX backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=10min
+# Якщо сервер був вимкнений о 03:00 — бекап виконається одразу після старту
+Persistent=true
+
+[Install]
+WantedBy=timers.target

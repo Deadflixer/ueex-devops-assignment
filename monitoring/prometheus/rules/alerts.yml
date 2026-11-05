@@ -51,3 +51,32 @@ groups:
         annotations:
           summary: "TLS-сертифікат спливає менш ніж за 14 днів"
           description: "Перевипуск: ./scripts/gen-cert.sh --force && docker compose up -d --force-recreate nginx"
+
+  - name: backup
+    rules:
+      - alert: BackupTooOld
+        expr: time() - ueex_backup_last_success_timestamp_seconds > 26 * 3600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Немає успішного бекапу БД понад 26 год"
+          description: "Перевірте: systemctl status ueex-backup.service; journalctl -u ueex-backup.service"
+
+      - alert: BackupOffsiteTooOld
+        expr: time() - ueex_backup_offsite_last_success_timestamp_seconds > 26 * 3600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Немає свіжої копії бекапу в Cloudflare R2 понад 26 год"
+          description: "Локальні бекапи не переживуть втрату хоста. Перевірте R2_* у .env і journalctl -u ueex-backup.service"
+
+      - alert: BackupMetricMissing
+        expr: absent(ueex_backup_last_success_timestamp_seconds)
+        for: 30h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Метрика бекапу відсутня"
+          description: "Бекап жодного разу не виконувався або textfile collector не налаштований."

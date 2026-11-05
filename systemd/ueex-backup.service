@@ -1,0 +1,12 @@
+[Unit]
+Description=UEEX backup: PostgreSQL dump + Kanboard files -> local + Cloudflare R2
+Requires=docker.service
+After=docker.service ueex-stack.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO_DIR@
+ExecStart=@REPO_DIR@/scripts/backup.sh scheduled
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=1800
