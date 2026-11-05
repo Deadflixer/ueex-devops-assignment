@@ -83,13 +83,35 @@ services:
       - --storage.tsdb.retention.time=15d
       - --storage.tsdb.retention.size=2GB
       - --web.enable-lifecycle
+      - --web.external-url=http://localhost:9090
     ports:
       - "127.0.0.1:9090:9090"   # лише локально; доступ через SSH-тунель
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [monitoring]
+    logging: *default-logging
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.2
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"   # лише локально; доступ через SSH-тунель
+    volumes:
+      # генерується scripts/render-config.sh з .env (містить токен, тому не в Git)
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9093/-/healthy || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -150,10 +172,11 @@ networks:
   edge:          # nginx <-> app; blackbox перевіряє сервіс «ззовні»
   backend:       # app/exporter <-> db; без виходу в інтернет
     internal: true
-  monitoring:    # Prometheus-стек
+  monitoring:    # Prometheus-стек; потрібен інтернет для Telegram
 
 volumes:
   pg_data:
   kanboard_data:
   kanboard_plugins:
   prometheus_data:
+  alertmanager_data:

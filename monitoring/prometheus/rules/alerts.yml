@@ -1,0 +1,53 @@
+groups:
+  - name: availability
+    rules:
+      # Основний алерт завдання: недоступність застосунку
+      - alert: ApplicationDown
+        expr: probe_success{job="blackbox-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kanboard недоступний ({{ $labels.probe }})"
+          description: "Перевірка {{ $labels.instance }} не проходить понад 1 хв."
+
+      # Основний алерт завдання: недоступність бази даних
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL недоступний"
+          description: "postgres-exporter не може підключитися до БД понад 1 хв."
+
+      # Якщо зник сам експортер, pg_up/probe_success теж зникають — ловимо окремо
+      - alert: ScrapeTargetDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ціль моніторингу {{ $labels.job }} недоступна"
+          description: "{{ $labels.instance }} не відповідає Prometheus понад 2 хв."
+
+  - name: host
+    rules:
+      - alert: HostDiskSpaceLow
+        expr: |
+          node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}
+            / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} < 0.15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "На / залишилось менше 15% місця"
+
+      - alert: TLSCertExpiringSoon
+        expr: probe_ssl_earliest_cert_expiry{job="blackbox-app"} - time() < 14 * 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "TLS-сертифікат спливає менш ніж за 14 днів"
+          description: "Перевипуск: ./scripts/gen-cert.sh --force && docker compose up -d --force-recreate nginx"

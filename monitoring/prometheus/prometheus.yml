@@ -4,7 +4,19 @@ global:
   external_labels:
     env: ueex-demo
 
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 scrape_configs:
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
+
   - job_name: prometheus
     static_configs:
       - targets: ["localhost:9090"]
