@@ -1,0 +1,63 @@
+# UEEX DevOps practical assignment — Kanboard (PHP) + PostgreSQL + Nginx (TLS)
+# Усі змінні беруться з файлу .env (шаблон: .env.example). Версії образів зафіксовані.
+
+name: ueex
+
+# Ротація логів для кожного контейнера (дублює /etc/docker/daemon.json)
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    stop_grace_period: 30s
+    networks: [backend]
+    logging: *default-logging
+
+  app:
+    image: kanboard/kanboard:${APP_TAG:?set in .env}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      PLUGIN_INSTALLER: "false"
+    volumes:
+      - kanboard_data:/var/www/app/data
+      - kanboard_plugins:/var/www/app/plugins
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # healthcheck.php виконує SELECT 1 у БД -> перевіряє і PHP, і зʼєднання з Postgres
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthcheck.php || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks: [edge, backend]
+    logging: *default-logging
+
+networks:
+  edge:          # nginx <-> app
+  backend:       # app <-> db; без виходу в інтернет
+    internal: true
+
+volumes:
+  pg_data:
+  kanboard_data:
+  kanboard_plugins:
