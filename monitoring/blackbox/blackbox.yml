@@ -1,0 +1,10 @@
+modules:
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      tls_config:
+        # сертифікат self-signed; строк дії все одно експортується (probe_ssl_earliest_cert_expiry)
+        insecure_skip_verify: true
