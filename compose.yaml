@@ -52,6 +52,28 @@ services:
     networks: [edge, backend]
     logging: *default-logging
 
+  nginx:
+    image: nginx:1.30-alpine
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ${SERVER_NAME:?set in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks: [edge]
+    logging: *default-logging
+
 networks:
   edge:          # nginx <-> app
   backend:       # app <-> db; без виходу в інтернет
