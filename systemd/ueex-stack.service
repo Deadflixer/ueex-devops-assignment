@@ -1,0 +1,18 @@
+[Unit]
+Description=UEEX Docker Compose stack (Kanboard + PostgreSQL + Nginx + monitoring)
+Documentation=file://@REPO_DIR@/README.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=@REPO_DIR@
+ExecStart=/usr/bin/docker compose up -d --remove-orphans
+ExecStop=/usr/bin/docker compose stop
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target
