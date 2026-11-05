@@ -8,6 +8,7 @@ source .env
 
 OUT=monitoring/alertmanager/alertmanager.yml
 umask 022
+mkdir -p "$(dirname "$OUT")"
 
 if [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_CHAT_ID:-}" ]]; then
   RECEIVER=telegram
