@@ -1,0 +1,6 @@
+# Секрети та згенеровані на хості файли
+.env
+nginx/certs/*
+!nginx/certs/.gitkeep
+monitoring/alertmanager/alertmanager.yml
+.deploy/
